@@ -1,0 +1,5 @@
+pandas
+scikit-learn
+joblib
+python-dotenv
+circular-enterprise-apis

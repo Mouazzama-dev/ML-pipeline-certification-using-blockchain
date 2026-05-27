@@ -1,0 +1,76 @@
+{
+  "certificate_purpose": "Certify the raw dataset baseline together with its environment, documentation, source code and existing dataset certificate reference.",
+  "created_at_utc": "2026-05-27T08:02:58.042174+00:00",
+  "evidence_files": [
+    {
+      "path": "data/raw/IRIS.csv",
+      "sha256": "9194e2b71f7144e7d192a1c38f9a54f26b0e8f705c0929b8225b0cd10275efd1"
+    },
+    {
+      "path": "certificates/manifests/dataset_manifest.json",
+      "sha256": "e961ffd2d1500a99b274c3e202372a941db633f55ef5e725161a970d6a3f0cef"
+    },
+    {
+      "path": "certificates/receipts/dataset_receipt.json",
+      "sha256": "ebe89999087992e8dc9e001260c7c5ce6a410dce62c9993345d80c7fbf961f7c"
+    },
+    {
+      "path": "requirements.txt",
+      "sha256": "03f963abd2ca99f2090abd8362e2861f49d85a6800ab232e59d210ac7d51afa0"
+    },
+    {
+      "path": "requirements.lock.txt",
+      "sha256": "a9ae150aff5770678f18157e7c2e59cedbadcbb7730559bafe547894a359828d"
+    },
+    {
+      "path": "README.md",
+      "sha256": "a87452986ec43b473a6b2795206926562b86d812364f60660c74c14f41025633"
+    },
+    {
+      "path": ".gitignore",
+      "sha256": "b0a41bd3a2c9dffdb66dc866fdda147b2311ab6ac420b13a2fe9d9a15dbddfd0"
+    },
+    {
+      "path": "certificates/manifests/stage_01_runtime_info.json",
+      "sha256": "3706950a899b401aa07e0b7136a1cc8fcba632ba6d8b3d37621eebce068b4dcf"
+    },
+    {
+      "path": "src/hashing.py",
+      "sha256": "2ed299919b4fbb87ff20032fc0ebfc21f2767c9c43111cede215f4f47cb7cb08"
+    },
+    {
+      "path": "src/manifest_service.py",
+      "sha256": "c36c5d50976845213fb5d7cfd5e9997d0a2d4d247da0a6d1c7414588a39122df"
+    },
+    {
+      "path": "src/certificate_service.py",
+      "sha256": "f1bd5e24d2a8db4984d64c034c1ac16163cd7dd82ba71649b38ea2d9d48b3c8a"
+    },
+    {
+      "path": "src/verify_certificate.py",
+      "sha256": "e474facd6f2a2d7350af09613269dc7296dae6b3a6eec3cd4de32864a7149c3c"
+    },
+    {
+      "path": "src/capture_runtime.py",
+      "sha256": "01cf07d2af19062e63432d358de769f3d063892baf53184a3a0ec723965e4908"
+    },
+    {
+      "path": "src/stage_manifest_service.py",
+      "sha256": "6a0c9b9aef70bec586c0a88fb7d0f32960ed4a7fd650c10847634b25c28cae8a"
+    }
+  ],
+  "parent_certificates": [
+    {
+      "block_id": "70660",
+      "certificate_type": "dataset_artifact_certificate",
+      "manifest_path": "certificates/manifests/dataset_manifest.json",
+      "manifest_sha256": "e961ffd2d1500a99b274c3e202372a941db633f55ef5e725161a970d6a3f0cef",
+      "network": "testnet",
+      "tx_id": "aa61c7c8d508cbfb95e53f2a5137a57f635ea97933ebbf1322d319120443bc0d"
+    }
+  ],
+  "project_id": "iris_certified_ai_mvp",
+  "schema_version": "1.0",
+  "security_note": "No private keys or .env secret values are included in this manifest.",
+  "stage": "stage_01_raw_dataset_baseline"
+}

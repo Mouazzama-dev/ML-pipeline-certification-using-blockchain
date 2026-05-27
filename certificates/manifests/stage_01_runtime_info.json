@@ -1,0 +1,21 @@
+{
+  "captured_at_utc": "2026-05-27T08:00:31.700686+00:00",
+  "dependency_snapshot": {
+    "path": "requirements.lock.txt",
+    "sha256": "a9ae150aff5770678f18157e7c2e59cedbadcbb7730559bafe547894a359828d"
+  },
+  "project_id": "iris_certified_ai_mvp",
+  "python": {
+    "executable": "/home/user/Documents/Masters/test /.venv/bin/python",
+    "implementation": "CPython",
+    "version": "3.14.3"
+  },
+  "schema_version": "1.0",
+  "stage": "stage_01_raw_dataset_baseline",
+  "system": {
+    "machine": "x86_64",
+    "operating_system": "Linux",
+    "platform": "Linux-6.17.0-29-generic-x86_64-with-glibc2.42",
+    "release": "6.17.0-29-generic"
+  }
+}
