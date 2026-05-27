@@ -1,0 +1,46 @@
+{
+  "certificate_type": "cleaning",
+  "created_at_utc": "2026-05-27T10:17:55.347269+00:00",
+  "evidence_files": [
+    {
+      "path": "src/clean_data.py",
+      "role": "cleaning_script",
+      "sha256": "d47964aaae7798355ff026c364261b96828c4d7dc8f578108a6f0594a0fa9246"
+    },
+    {
+      "path": "data/processed/iris_cleaned.csv",
+      "role": "cleaned_dataset",
+      "sha256": "8ad2b347677fbd5cbfa1173879d9ad8a2fd1801e3b7c30641776f8f3a1a95ece"
+    },
+    {
+      "path": "artifacts/logs/cleaning_report.json",
+      "role": "cleaning_report",
+      "sha256": "d2e777defcdfb028750e3df5b53f003d425ddf25c9c1a991f0c105cc15a2c62a"
+    }
+  ],
+  "metadata": {
+    "cleaning_version": "cleaning_v1",
+    "duplicates_removed": "3",
+    "input_rows": "150",
+    "missing_rows_removed": "0",
+    "output_rows": "147"
+  },
+  "parent_certificates": [
+    {
+      "block_id": "70660",
+      "manifest_sha256": "e961ffd2d1500a99b274c3e202372a941db633f55ef5e725161a970d6a3f0cef",
+      "network": "testnet",
+      "role": "dataset",
+      "tx_id": "aa61c7c8d508cbfb95e53f2a5137a57f635ea97933ebbf1322d319120443bc0d"
+    },
+    {
+      "block_id": "70662",
+      "manifest_sha256": "011a7356a4375a1f26595521b53224cafe3944c29336fdcaeda25261233fe881",
+      "network": "testnet",
+      "role": "environment",
+      "tx_id": "07962f0c2be7757d31a821c75a7ad8427fde5c9cf0b7499df42f1da6db2040d2"
+    }
+  ],
+  "project_id": "iris_certified_ai_mvp",
+  "schema_version": "2.0"
+}
