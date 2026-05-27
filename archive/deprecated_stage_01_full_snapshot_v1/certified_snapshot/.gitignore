@@ -1,0 +1,15 @@
+# Virtual environment
+.venv/
+
+# Secret environment variables
+.env
+.env.*
+
+# Python generated files
+__pycache__/
+*.pyc
+*.pyo
+
+# Editor / operating system files
+.vscode/
+.DS_Store

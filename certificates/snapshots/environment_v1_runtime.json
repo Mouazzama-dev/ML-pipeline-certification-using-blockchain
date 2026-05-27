@@ -1,0 +1,26 @@
+{
+  "captured_at_utc": "2026-05-27T09:10:34.744293+00:00",
+  "dependency_lock": {
+    "path": "requirements.lock.txt",
+    "sha256": "a9ae150aff5770678f18157e7c2e59cedbadcbb7730559bafe547894a359828d"
+  },
+  "environment_label": "environment_v1",
+  "pip": {
+    "version": "26.0"
+  },
+  "project_id": "iris_certified_ai_mvp",
+  "python": {
+    "compiler": "GCC 12.3.0",
+    "implementation": "CPython",
+    "version": "3.14.3",
+    "virtual_environment_active": true
+  },
+  "schema_version": "1.0",
+  "security_note": "No wallet address, private key or .env values are included.",
+  "system": {
+    "machine": "x86_64",
+    "operating_system": "Linux",
+    "platform": "Linux-6.17.0-29-generic-x86_64-with-glibc2.42",
+    "release": "6.17.0-29-generic"
+  }
+}

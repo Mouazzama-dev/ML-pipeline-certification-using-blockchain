@@ -1,0 +1,12 @@
+{
+  "artifact_path": "data/raw/IRIS.csv",
+  "artifact_sha256": "9194e2b71f7144e7d192a1c38f9a54f26b0e8f705c0929b8225b0cd10275efd1",
+  "certificate_type": "dataset",
+  "created_at_utc": "2026-05-26T16:47:30.320253+00:00",
+  "metadata": {
+    "description": "Raw Iris dataset"
+  },
+  "parent_certificates": [],
+  "project_id": "iris_certified_ai_mvp",
+  "schema_version": "1.0"
+}

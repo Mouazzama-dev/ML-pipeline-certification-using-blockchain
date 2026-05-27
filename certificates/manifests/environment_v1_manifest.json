@@ -1,0 +1,23 @@
+{
+  "certificate_type": "environment",
+  "created_at_utc": "2026-05-27T09:13:34.781890+00:00",
+  "evidence_files": [
+    {
+      "path": "requirements.lock.txt",
+      "role": "dependency_lock",
+      "sha256": "a9ae150aff5770678f18157e7c2e59cedbadcbb7730559bafe547894a359828d"
+    },
+    {
+      "path": "certificates/snapshots/environment_v1_runtime.json",
+      "role": "runtime_snapshot",
+      "sha256": "bda1efd6da5a4f1443c181e07f58e4af6219c6e2b126d8f1c37aea271a9ccfa9"
+    }
+  ],
+  "metadata": {
+    "environment_label": "environment_v1",
+    "purpose": "Certified Python runtime and dependency environment"
+  },
+  "parent_certificates": [],
+  "project_id": "iris_certified_ai_mvp",
+  "schema_version": "2.0"
+}
