@@ -1,0 +1,35 @@
+{
+  "class_distribution_after_cleaning": {
+    "Iris-setosa": 48,
+    "Iris-versicolor": 50,
+    "Iris-virginica": 49
+  },
+  "columns": [
+    "sepal_length",
+    "sepal_width",
+    "petal_length",
+    "petal_width",
+    "species"
+  ],
+  "input_dataset": {
+    "path": "data/raw/IRIS.csv",
+    "rows": 150,
+    "sha256": "9194e2b71f7144e7d192a1c38f9a54f26b0e8f705c0929b8225b0cd10275efd1"
+  },
+  "operation": "deterministic_data_cleaning",
+  "output_dataset": {
+    "path": "data/processed/iris_cleaned.csv",
+    "rows": 147,
+    "sha256": "8ad2b347677fbd5cbfa1173879d9ad8a2fd1801e3b7c30641776f8f3a1a95ece"
+  },
+  "results": {
+    "duplicate_rows_removed": 3,
+    "missing_rows_removed": 0,
+    "total_rows_removed": 3
+  },
+  "transformations": [
+    "drop rows containing missing values",
+    "drop duplicate rows",
+    "reset row index"
+  ]
+}
