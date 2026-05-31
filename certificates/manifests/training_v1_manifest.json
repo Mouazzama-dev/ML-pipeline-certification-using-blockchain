@@ -1,0 +1,42 @@
+{
+  "certificate_type": "training",
+  "created_at_utc": "2026-05-27T10:47:51.049320+00:00",
+  "evidence_files": [
+    {
+      "path": "src/train_model.py",
+      "role": "training_script",
+      "sha256": "ddc39b2d112b5b27cebddc3305b9a22a324fb4c22f572dd783095786261c9518"
+    },
+    {
+      "path": "artifacts/logs/training_log.json",
+      "role": "training_log",
+      "sha256": "8165106a79f402092fae0bf3d3987998a1044eeb4714db4107a5d4e3a34450e0"
+    }
+  ],
+  "metadata": {
+    "accuracy": "0.5667",
+    "epochs": "50",
+    "hidden_layer_neurons": "8",
+    "model_type": "MLPClassifier Neural Network",
+    "random_seed": "42",
+    "training_version": "training_v1"
+  },
+  "parent_certificates": [
+    {
+      "block_id": "70663",
+      "manifest_sha256": "4ff62618362db56690b3ee3e6d867f06ab8d0a897171e77b567e9aadff5456f2",
+      "network": "testnet",
+      "role": "cleaning",
+      "tx_id": "65a50f87bdac42c1396844a96dd83323eac73a1a87fb720a3dc1003cfff07007"
+    },
+    {
+      "block_id": "70662",
+      "manifest_sha256": "011a7356a4375a1f26595521b53224cafe3944c29336fdcaeda25261233fe881",
+      "network": "testnet",
+      "role": "environment",
+      "tx_id": "07962f0c2be7757d31a821c75a7ad8427fde5c9cf0b7499df42f1da6db2040d2"
+    }
+  ],
+  "project_id": "iris_certified_ai_mvp",
+  "schema_version": "2.0"
+}

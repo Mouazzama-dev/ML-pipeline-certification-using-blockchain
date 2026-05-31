@@ -1,0 +1,309 @@
+{
+  "architecture": {
+    "hidden_activation": "relu",
+    "hidden_layers": [
+      8
+    ],
+    "input_features": [
+      "sepal_length",
+      "sepal_width",
+      "petal_length",
+      "petal_width"
+    ],
+    "input_neurons": 4,
+    "model_type": "Multi-Layer Perceptron Neural Network",
+    "output_classes": [
+      "Iris-setosa",
+      "Iris-versicolor",
+      "Iris-virginica"
+    ],
+    "output_neurons": 3
+  },
+  "data_split": {
+    "stratified_by": "species",
+    "test_size": 0.2,
+    "testing_rows": 30,
+    "training_rows": 117
+  },
+  "epoch_losses": [
+    {
+      "epoch": 1,
+      "loss": 1.1825093801596678
+    },
+    {
+      "epoch": 2,
+      "loss": 1.1745693988573092
+    },
+    {
+      "epoch": 3,
+      "loss": 1.1666823488820368
+    },
+    {
+      "epoch": 4,
+      "loss": 1.1588582779620484
+    },
+    {
+      "epoch": 5,
+      "loss": 1.1510891127206493
+    },
+    {
+      "epoch": 6,
+      "loss": 1.14338525886344
+    },
+    {
+      "epoch": 7,
+      "loss": 1.135740723228807
+    },
+    {
+      "epoch": 8,
+      "loss": 1.128147103815816
+    },
+    {
+      "epoch": 9,
+      "loss": 1.120605366759675
+    },
+    {
+      "epoch": 10,
+      "loss": 1.1131272589356551
+    },
+    {
+      "epoch": 11,
+      "loss": 1.105714268944701
+    },
+    {
+      "epoch": 12,
+      "loss": 1.098369896180554
+    },
+    {
+      "epoch": 13,
+      "loss": 1.0910959339057713
+    },
+    {
+      "epoch": 14,
+      "loss": 1.0838890985536058
+    },
+    {
+      "epoch": 15,
+      "loss": 1.0767414569894755
+    },
+    {
+      "epoch": 16,
+      "loss": 1.0696500182071105
+    },
+    {
+      "epoch": 17,
+      "loss": 1.0626217701674252
+    },
+    {
+      "epoch": 18,
+      "loss": 1.0556482217376235
+    },
+    {
+      "epoch": 19,
+      "loss": 1.048731242671084
+    },
+    {
+      "epoch": 20,
+      "loss": 1.041882850465784
+    },
+    {
+      "epoch": 21,
+      "loss": 1.0351110302668158
+    },
+    {
+      "epoch": 22,
+      "loss": 1.0284131407230985
+    },
+    {
+      "epoch": 23,
+      "loss": 1.0218039761588869
+    },
+    {
+      "epoch": 24,
+      "loss": 1.0152594545939604
+    },
+    {
+      "epoch": 25,
+      "loss": 1.0087792866801306
+    },
+    {
+      "epoch": 26,
+      "loss": 1.0023631440999445
+    },
+    {
+      "epoch": 27,
+      "loss": 0.9960063820310654
+    },
+    {
+      "epoch": 28,
+      "loss": 0.989711083722481
+    },
+    {
+      "epoch": 29,
+      "loss": 0.9834946447089349
+    },
+    {
+      "epoch": 30,
+      "loss": 0.9773770082061225
+    },
+    {
+      "epoch": 31,
+      "loss": 0.9713307979719138
+    },
+    {
+      "epoch": 32,
+      "loss": 0.965361260702773
+    },
+    {
+      "epoch": 33,
+      "loss": 0.9594702519709918
+    },
+    {
+      "epoch": 34,
+      "loss": 0.9536427455187563
+    },
+    {
+      "epoch": 35,
+      "loss": 0.9478739554012532
+    },
+    {
+      "epoch": 36,
+      "loss": 0.9421397264773739
+    },
+    {
+      "epoch": 37,
+      "loss": 0.9364688763442693
+    },
+    {
+      "epoch": 38,
+      "loss": 0.9308649022019342
+    },
+    {
+      "epoch": 39,
+      "loss": 0.9253182566841142
+    },
+    {
+      "epoch": 40,
+      "loss": 0.9198365636247428
+    },
+    {
+      "epoch": 41,
+      "loss": 0.9144133900801457
+    },
+    {
+      "epoch": 42,
+      "loss": 0.9090460037226614
+    },
+    {
+      "epoch": 43,
+      "loss": 0.9037229449631476
+    },
+    {
+      "epoch": 44,
+      "loss": 0.898449371054244
+    },
+    {
+      "epoch": 45,
+      "loss": 0.8932345375840646
+    },
+    {
+      "epoch": 46,
+      "loss": 0.8880746358234803
+    },
+    {
+      "epoch": 47,
+      "loss": 0.8829642313606229
+    },
+    {
+      "epoch": 48,
+      "loss": 0.8779036267872813
+    },
+    {
+      "epoch": 49,
+      "loss": 0.8728940626125118
+    },
+    {
+      "epoch": 50,
+      "loss": 0.8679316040592583
+    }
+  ],
+  "evaluation": {
+    "accuracy": 0.5666666666666667,
+    "classification_report": {
+      "Iris-setosa": {
+        "f1-score": 0.5263157894736842,
+        "precision": 0.5555555555555556,
+        "recall": 0.5,
+        "support": 10.0
+      },
+      "Iris-versicolor": {
+        "f1-score": 0.6086956521739131,
+        "precision": 0.5384615384615384,
+        "recall": 0.7,
+        "support": 10.0
+      },
+      "Iris-virginica": {
+        "f1-score": 0.5555555555555556,
+        "precision": 0.625,
+        "recall": 0.5,
+        "support": 10.0
+      },
+      "accuracy": 0.5666666666666667,
+      "macro avg": {
+        "f1-score": 0.5635223324010509,
+        "precision": 0.573005698005698,
+        "recall": 0.5666666666666667,
+        "support": 30.0
+      },
+      "weighted avg": {
+        "f1-score": 0.5635223324010509,
+        "precision": 0.573005698005698,
+        "recall": 0.5666666666666667,
+        "support": 30.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        5,
+        5,
+        0
+      ],
+      [
+        0,
+        7,
+        3
+      ],
+      [
+        4,
+        1,
+        5
+      ]
+    ]
+  },
+  "input_dataset": {
+    "path": "data/processed/iris_cleaned.csv",
+    "rows": 147,
+    "sha256": "8ad2b347677fbd5cbfa1173879d9ad8a2fd1801e3b7c30641776f8f3a1a95ece"
+  },
+  "model_output_path": "artifacts/models/iris_nn_model.pkl",
+  "operation": "neural_network_training",
+  "runtime": {
+    "completed_at_utc": "2026-05-27T10:45:24.815773+00:00",
+    "elapsed_seconds": 0.03799216200422961,
+    "machine": "x86_64",
+    "python_version": "3.14.3",
+    "scikit_learn_version": "1.8.0",
+    "started_at_utc": "2026-05-27T10:45:24.777709+00:00"
+  },
+  "training_configuration": {
+    "epochs_completed": 50,
+    "epochs_requested": 50,
+    "feature_scaling": "StandardScaler",
+    "learning_rate_init": 0.001,
+    "optimizer": "adam",
+    "random_seed": 42
+  },
+  "warnings": [
+    "Stochastic Optimizer: Maximum iterations (50) reached and the optimization hasn't converged yet."
+  ]
+}

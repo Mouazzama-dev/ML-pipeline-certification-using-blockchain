@@ -1,0 +1,28 @@
+{
+  "certificate_type": "model",
+  "created_at_utc": "2026-05-28T09:43:27.149684+00:00",
+  "evidence_files": [
+    {
+      "path": "artifacts/models/iris_nn_model.pkl",
+      "role": "model_artifact",
+      "sha256": "968b582b0bf0151236002abe0517f6651151eaaa78031ba88a6e915e6e3e3974"
+    }
+  ],
+  "metadata": {
+    "accuracy": "0.5667",
+    "epochs": "50",
+    "model_type": "MLPClassifier Neural Network",
+    "model_version": "model_v1"
+  },
+  "parent_certificates": [
+    {
+      "block_id": "70665",
+      "manifest_sha256": "33bf81e7c298121d2b5fe1e4574d549d0a24efafa4a919cbcf4c1964a6b8437e",
+      "network": "testnet",
+      "role": "training",
+      "tx_id": "7eb4563f02e76d1f449219944349881f3dd7da26b70c2a7e751eac0466c74771"
+    }
+  ],
+  "project_id": "iris_certified_ai_mvp",
+  "schema_version": "2.0"
+}
