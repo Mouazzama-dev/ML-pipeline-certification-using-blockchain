@@ -13,3 +13,8 @@ __pycache__/
 # Editor / operating system files
 .vscode/
 .DS_Store
+
+# Generated certificates and receipts
+certificates/
+certificates/manifests/
+certificates/receipts/

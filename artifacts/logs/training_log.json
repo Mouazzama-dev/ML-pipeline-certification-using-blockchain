@@ -288,12 +288,12 @@
   "model_output_path": "artifacts/models/iris_nn_model.pkl",
   "operation": "neural_network_training",
   "runtime": {
-    "completed_at_utc": "2026-05-27T10:45:24.815773+00:00",
-    "elapsed_seconds": 0.03799216200422961,
+    "completed_at_utc": "2026-06-04T10:37:33.971965+00:00",
+    "elapsed_seconds": 0.09696544799953699,
     "machine": "x86_64",
     "python_version": "3.14.3",
     "scikit_learn_version": "1.8.0",
-    "started_at_utc": "2026-05-27T10:45:24.777709+00:00"
+    "started_at_utc": "2026-06-04T10:37:33.874941+00:00"
   },
   "training_configuration": {
     "epochs_completed": 50,
