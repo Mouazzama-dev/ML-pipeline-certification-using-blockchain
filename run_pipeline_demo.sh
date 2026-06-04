@@ -1,4 +1,7 @@
 #!/bin/bash
+#chmod +x run_pipeline_demo.sh
+# ./run_pipeline_demo.sh 
+
 set -e
 
 source .venv/bin/activate
