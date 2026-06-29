@@ -4,7 +4,7 @@
 
 set -e
 
-source .venv/bin/activate
+source ~/Dev/314venv/bin/activate
 
 # Configuration
 POLLING_INTERVAL=10          # Check every 10 seconds

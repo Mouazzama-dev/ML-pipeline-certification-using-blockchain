@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from circular_enterprise_apis import CEP_Account
 
 from hashing import hash_file
+from network_utils import call_with_retry
 
 
 def get_required_env(name: str) -> str:
@@ -53,13 +54,13 @@ def submit_manifest_certificate(manifest_path: str, receipt_path: str) -> dict:
         account.set_network(network)
         account.set_blockchain(blockchain_address)
 
-        if not account.open(wallet_address):
+        if not call_with_retry(account.open, wallet_address):
             raise RuntimeError(f"Failed to open account: {account.lastError}")
 
-        if not account.update_account():
+        if not call_with_retry(account.update_account):
             raise RuntimeError(f"Failed to update account: {account.lastError}")
 
-        submission = account.submit_certificate(manifest_data, private_key)
+        submission = call_with_retry(account.submit_certificate, manifest_data, private_key)
 
         if submission.get("Result") != 200:
             raise RuntimeError(f"Certificate submission failed: {submission}")
@@ -67,14 +68,14 @@ def submit_manifest_certificate(manifest_path: str, receipt_path: str) -> dict:
         tx_id = submission["Response"]["TxID"]
         print(f"Transaction submitted. TxID: {tx_id}")
 
-        outcome = account.get_transaction_outcome(tx_id, 25)
+        outcome = call_with_retry(account.get_transaction_outcome, tx_id, 25)
 
         block_id = outcome.get("Response", {}).get("BlockID")
 
         if not block_id:
             raise RuntimeError(f"Transaction was not confirmed: {outcome}")
 
-        transaction = account.get_transaction(block_id, tx_id)
+        transaction = call_with_retry(account.get_transaction, block_id, tx_id)
 
         if transaction.get("Result") != 200:
             raise RuntimeError(f"Could not retrieve confirmed transaction: {transaction}")

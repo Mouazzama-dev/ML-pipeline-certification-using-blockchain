@@ -8,6 +8,7 @@ from circular_enterprise_apis import CEP_Account
 from dotenv import load_dotenv
 
 from hashing import hash_file
+from network_utils import call_with_retry
 
 
 def get_required_env(name: str) -> str:
@@ -34,7 +35,7 @@ def get_on_chain_manifest_text(
     """
     Retrieve a certificate transaction and return the manifest text stored on-chain.
     """
-    transaction = account.get_transaction(block_id, tx_id)
+    transaction = call_with_retry(account.get_transaction, block_id, tx_id)
 
     if transaction.get("Result") != 200:
         raise RuntimeError(f"Could not retrieve transaction: {transaction}")
@@ -189,7 +190,7 @@ def verify_certificate(
         account.set_network(network)
         account.set_blockchain(blockchain_address)
 
-        if not account.open(wallet_address):
+        if not call_with_retry(account.open, wallet_address):
             raise RuntimeError(f"Failed to open Circular account: {account.lastError}")
 
         on_chain_manifest_text = get_on_chain_manifest_text(
