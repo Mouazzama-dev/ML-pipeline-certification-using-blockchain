@@ -18,3 +18,8 @@ __pycache__/
 certificates/
 certificates/manifests/
 certificates/receipts/
+
+artifacts/
+artifacts/logs/
+artifacts/models/
+artifacts/metrics/

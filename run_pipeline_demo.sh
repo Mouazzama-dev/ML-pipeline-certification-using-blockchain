@@ -4,116 +4,110 @@
 
 set -e
 
-source ~/Dev/314venv/bin/activate
+source .venv/bin/activate
 
-# Configuration
-POLLING_INTERVAL=10          # Check every 10 seconds
-TIMEOUT_SEC=1200             # 20 minutes = 1200 seconds
-MAX_POLLING_ROUNDS=120       # 1200 seconds / 10 seconds = 120 rounds
+# =========================
+# CONFIGURATION
+# =========================
+POLLING_INTERVAL=10
+TIMEOUT_SEC=1200
+MAX_POLLING_ROUNDS=120
 
-function wait_for_tx() {
-    local manifest=$1
-    local receipt=$2
-    local txid=$3
-    
-    echo "⏳ Waiting for transaction to confirm: $txid"
-    echo "   ⏱️  Timeout: 20 minutes | Poll interval: 10 seconds"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    
-    python - "$txid" "$receipt" "$manifest" <<'PYEND'
-import os, sys, json, time
-from circular_enterprise_apis import CEP_Account
-from dotenv import load_dotenv
+# =========================
+# METRICS CONFIG (NEW)
+# =========================
+RUN_ID=$(date +"%Y%m%d_%H%M%S")
+METRICS_FILE="artifacts/metrics/pipeline_metrics_${RUN_ID}.csv"
+mkdir -p artifacts/metrics
 
-load_dotenv(".env")
+# CIRX → EUR rate (adjust when needed)
+CIRX_EUR_RATE=${CIRX_EUR_RATE:-0.002403}
 
-TX_ID = sys.argv[1]
-RECEIPT_PATH = sys.argv[2]
-MANIFEST_PATH = sys.argv[3]
+echo "stage,start_time,end_time,duration_sec,files_size_bytes,files_size_kb,cirx_cost,eur_cost" > "$METRICS_FILE"
 
-account = CEP_Account()
-account.set_network(os.environ["CIRCULAR_NETWORK"])
-account.set_blockchain(os.environ["CIRCULAR_BLOCKCHAIN_ADDRESS"])
 
-if not account.open(os.environ["CIRCULAR_WALLET_ADDRESS"]):
-    raise RuntimeError(account.lastError)
+# =========================
+# HELPERS (NEW - ANALYSIS ONLY)
+# =========================
+function get_size_bytes() {
+python - "$@" <<'PY'
+import os, sys
 
-try:
-    timeout_sec = 1200      # 20 minutes
-    poll_interval = 10      # 10 seconds
-    max_rounds = 120        # 120 polling attempts
-    
-    start_time = time.time()
-    round_num = 0
-    
-    while True:
-        round_num += 1
-        elapsed = time.time() - start_time
-        remaining = timeout_sec - elapsed
-        
-        try:
-            # FIX 1: Lowered SDK internal timeout to 2 seconds to avoid HTTP Timeout exceptions
-            result = account.get_transaction_outcome(TX_ID, 2)
-            
-            response_data = result.get("Response", {})
-            
-            # FIX 2: Safely handle dictionary status versus string errors like "Transaction Not Found"
-            if isinstance(response_data, dict):
-                status = response_data.get("Status")
-            else:
-                status = str(response_data) # Handles "Transaction Not Found" text gracefully
-            
-            # Display status
-            mins_elapsed = int(elapsed // 60)
-            secs_elapsed = int(elapsed % 60)
-            
-            if status == "Executed":
-                print(f"\n✅ SUCCESS! Transaction executed after {mins_elapsed}m {secs_elapsed}s")
-                print(f"   TxID: {TX_ID}")
-                
-                # Save receipt
-                with open(RECEIPT_PATH, "w") as f:
-                    json.dump(result, f, indent=2)
-                print(f"   Receipt saved: {RECEIPT_PATH}")
-                break
-                
-            elif status == "Pending" or "Not Found" in status:
-                # Treat "Transaction Not Found" identical to Pending status during initial node sync
-                display_status = "Pending/Syncing" if "Not Found" in status else status
-                progress = (round_num / 120) * 100
-                bar_filled = int(progress / 5)
-                bar_empty = 20 - bar_filled
-                progress_bar = "█" * bar_filled + "░" * bar_empty
-                
-                print(f"\r[{progress_bar}] Round {round_num}/120 | {mins_elapsed}m {secs_elapsed}s / 20m | Status: {display_status}", end="", flush=True)
-                
-            else:
-                print(f"\n⚠️  Status: {status} (Round {round_num})")
-                
-        except Exception as e:
-            print(f"\n⚠️  Error checking status: {str(e)}")
-            print(f"   Retrying... (Round {round_num}/120)")
-        
-        # Check timeout
-        if elapsed > timeout_sec:
-            print(f"\n❌ TIMEOUT: Transaction did not execute within 20 minutes")
-            print(f"   TxID: {TX_ID}")
-            print(f"   Elapsed: {mins_elapsed}m {secs_elapsed}s")
-            sys.exit(1)
-        
-        # Check max rounds
-        if round_num >= max_rounds:
-            print(f"\n❌ MAX ROUNDS EXCEEDED: 120 polling attempts made")
-            print(f"   Transaction may still be processing on the blockchain")
-            sys.exit(1)
-        
-        # Wait before next poll
-        time.sleep(poll_interval)
+total = 0
+for path in sys.argv[1:]:
+    if not os.path.exists(path):
+        continue
+    if os.path.isfile(path):
+        total += os.path.getsize(path)
+    else:
+        for r, d, f in os.walk(path):
+            for file in f:
+                try:
+                    total += os.path.getsize(os.path.join(r, file))
+                except:
+                    pass
 
-finally:
-    account.close()
-PYEND
+print(total)
+PY
 }
+
+function extract_cirx_cost() {
+python - "$1" <<'PY'
+import json, sys
+
+data = json.load(open(sys.argv[1]))
+
+# ALWAYS use canonical response only
+response = (
+    data.get("outcome_response", {})
+        .get("Response", {})
+)
+
+keys = [
+    "BroadcastFee",
+    "ProtocolFee",
+    "DeveloperFee",
+    "ProcessingFee",
+    "NagFee",
+    "GasLimit"
+]
+
+total = sum(
+    float(response.get(k, 0))
+    for k in keys
+)
+
+print(round(total, 6))
+PY
+}
+
+function log_metrics() {
+    local stage=$1
+    local start=$2
+    local end=$3
+    local receipt=$4  # 👈 Always make the receipt the 4th argument
+    
+    shift 4           # 👈 Shift by 4 so "$@" only contains the files for size checking
+
+    local duration=$((end-start))
+    local size=$(get_size_bytes "$@")
+    local size_kb=$(python -c "print(round($size/1024,2))")
+
+    # Call the extractor using our explicit receipt variable
+    local cirx=$(extract_cirx_cost "$receipt")
+    
+    # Handle empty or invalid returns gracefully by defaulting to 0
+    if [ -z "$cirx" ]; then cirx=0; fi
+    
+    local eur=$(python -c "print(round($cirx*$CIRX_EUR_RATE,6))")
+
+    echo "$stage,$start,$end,$duration,$size,$size_kb,$cirx,$eur" >> "$METRICS_FILE"
+}
+
+
+# =========================
+# PIPELINE START
+# =========================
 
 echo
 echo "╔════════════════════════════════════════════════════════════════╗"
@@ -121,24 +115,56 @@ echo "║   Blockchain Certification Pipeline - 20 Minute Timeout        ║"
 echo "╚════════════════════════════════════════════════════════════════╝"
 echo
 
-# STEP 1: Dataset
+
+# ================================================================
+# STEP 1: DATASET
+# ================================================================
 echo "=== STEP 1: Dataset Certificate Verification ==="
+S1=$(date +%s)
+
 python src/verify_certificate.py \
   --manifest certificates/manifests/dataset_manifest.json \
   --receipt certificates/receipts/dataset_receipt.json
+
+E1=$(date +%s)
+
+log_metrics "environment_verification" $S2 $E2 \
+  "certificates/receipts/environment_v1_receipt.json" \
+  "certificates/manifests/environment_v1_manifest.json" \
+  "certificates/receipts/environment_v1_receipt.json"
+
+
 read -p "Press Enter to continue to Environment verification..."
 
-# STEP 2: Environment
+
+# ================================================================
+# STEP 2: ENVIRONMENT
+# ================================================================
 echo
 echo "=== STEP 2: Environment Certificate Verification ==="
+S2=$(date +%s)
+
 python src/verify_certificate.py \
   --manifest certificates/manifests/environment_v1_manifest.json \
   --receipt certificates/receipts/environment_v1_receipt.json
+
+E2=$(date +%s)
+
+log_metrics "environment_verification" $S2 $E2 \
+  "certificates/receipts/environment_v1_receipt.json" \
+  "certificates/manifests/environment_v1_manifest.json" \
+  "certificates/receipts/environment_v1_receipt.json"
+
 read -p "Press Enter to continue to Cleaning stage..."
 
-# STEP 3: Cleaning
+
+# ================================================================
+# STEP 3: CLEANING
+# ================================================================
 echo
 echo "=== STEP 3: Cleaning Stage ==="
+S3=$(date +%s)
+
 python src/clean_data.py --overwrite
 
 python src/manifest_service.py \
@@ -156,21 +182,35 @@ python src/manifest_service.py \
   --meta duplicates_removed=3 \
   --meta missing_rows_removed=0
 
-TXID_CLEANING=$(python -c "import json; print(json.load(open('certificates/manifests/cleaning_v3_manifest.json'))['parent_certificates'][0]['tx_id'])")
 echo "📤 Submitting cleaning certificate..."
 python src/certificate_service.py \
   --manifest certificates/manifests/cleaning_v3_manifest.json \
   --receipt certificates/receipts/cleaning_v3_receipt.json
 
-# wait_for_tx certificates/manifests/cleaning_v3_manifest.json certificates/receipts/cleaning_v3_receipt.json "$TXID_CLEANING"
 python src/verify_certificate.py \
   --manifest certificates/manifests/cleaning_v3_manifest.json \
   --receipt certificates/receipts/cleaning_v3_receipt.json
+
+E3=$(date +%s)
+
+# === STEP 3 ===
+log_metrics "cleaning_stage" $S3 $E3 \
+  "certificates/receipts/cleaning_v3_receipt.json" \
+  "certificates/manifests/cleaning_v3_manifest.json" \
+  "data/processed/iris_cleaned.csv" \
+  "artifacts/logs/cleaning_report.json"
+
+
 read -p "Press Enter to continue to Training stage..."
 
-# STEP 4: Training
+
+# ================================================================
+# STEP 4: TRAINING
+# ================================================================
 echo
 echo "=== STEP 4: Training Stage ==="
+S4=$(date +%s)
+
 python src/train_model.py --overwrite
 
 python src/manifest_service.py \
@@ -196,11 +236,29 @@ python src/certificate_service.py \
 python src/verify_certificate.py \
   --manifest certificates/manifests/training_v3_manifest.json \
   --receipt certificates/receipts/training_v3_receipt.json
+
+E4=$(date +%s)
+
+# === STEP 4 ===
+log_metrics "training_stage" $S4 $E4 \
+  "certificates/receipts/training_v3_receipt.json" \
+  "certificates/manifests/training_v3_manifest.json" \
+  "artifacts/models/iris_nn_model.pkl" \
+  "artifacts/logs/training_log.json"
+
+
+
+
 read -p "Press Enter to continue to Model stage..."
 
-# STEP 5: Model
+
+# ================================================================
+# STEP 5: MODEL
+# ================================================================
 echo
 echo "=== STEP 5: Model Stage ==="
+S5=$(date +%s)
+
 python src/manifest_service.py \
   --type model \
   --output certificates/manifests/model_v3_manifest.json \
@@ -221,8 +279,24 @@ python src/verify_certificate.py \
   --manifest certificates/manifests/model_v3_manifest.json \
   --receipt certificates/receipts/model_v3_receipt.json
 
+E5=$(date +%s)
+
+# === STEP 5 ===
+log_metrics "model_stage" $S5 $E5 \
+  "certificates/receipts/model_v3_receipt.json" \
+  "certificates/manifests/model_v3_manifest.json" \
+  "artifacts/models/iris_nn_model.pkl"
+
+# ================================================================
+# DONE
+# ================================================================
 echo
 echo "╔════════════════════════════════════════════════════════════════╗"
 echo "║              ✅ DEMO COMPLETE - ALL VERIFIED                   ║"
-echo "║     All blockchain transactions executed successfully           ║"
 echo "╚════════════════════════════════════════════════════════════════╝"
+
+echo
+echo "📊 Metrics saved to:"
+echo "$METRICS_FILE"
+
+column -s, -t < "$METRICS_FILE"
