@@ -1,6 +1,17 @@
 #!/bin/bash
-#chmod +x run_pipeline_demo.sh
-# ./run_pipeline_demo.sh 
+# chmod +x run_pipeline_demo.sh
+# ./run_pipeline_demo.sh
+#
+# This orchestration script runs the full certified pipeline and records
+# TIMING and ON-CHAIN PAYLOAD SIZE for each stage.
+#
+# NOTE ON COST:
+#   Blockchain certification COST is NOT computed here. Costs are estimated
+#   separately with estimate_costs.py, which applies the Circular fee
+#   function to each certificate's on-chain payload size. Keeping cost in a
+#   single place (the estimator) avoids the two sources drifting apart and
+#   lets costs be recomputed without re-running the pipeline or needing the
+#   faucet.
 
 set -e
 
@@ -14,94 +25,63 @@ TIMEOUT_SEC=1200
 MAX_POLLING_ROUNDS=120
 
 # =========================
-# METRICS CONFIG (NEW)
+# METRICS CONFIG
 # =========================
 RUN_ID=$(date +"%Y%m%d_%H%M%S")
 METRICS_FILE="artifacts/metrics/pipeline_metrics_${RUN_ID}.csv"
 mkdir -p artifacts/metrics
 
-# CIRX → EUR rate (adjust when needed)
-CIRX_EUR_RATE=${CIRX_EUR_RATE:-0.002403}
-
-echo "stage,start_time,end_time,duration_sec,files_size_bytes,files_size_kb,cirx_cost,eur_cost" > "$METRICS_FILE"
+echo "stage,start_time,end_time,duration_sec,payload_bytes,payload_kb" > "$METRICS_FILE"
 
 
 # =========================
-# HELPERS (NEW - ANALYSIS ONLY)
+# HELPERS (ANALYSIS ONLY)
 # =========================
-function get_size_bytes() {
-python - "$@" <<'PY'
-import os, sys
 
-total = 0
-for path in sys.argv[1:]:
-    if not os.path.exists(path):
-        continue
-    if os.path.isfile(path):
-        total += os.path.getsize(path)
-    else:
-        for r, d, f in os.walk(path):
-            for file in f:
-                try:
-                    total += os.path.getsize(os.path.join(r, file))
-                except:
-                    pass
-
-print(total)
-PY
-}
-
-function extract_cirx_cost() {
+# Return the on-chain payload size (in bytes) recorded in a receipt.
+# The payload is a hex string, so byte size = len(hex)//2. It may live
+# under outcome_response or transaction_response depending on the stage.
+function get_payload_bytes() {
 python - "$1" <<'PY'
 import json, sys
+try:
+    data = json.load(open(sys.argv[1]))
+except Exception:
+    print(0); sys.exit(0)
 
-data = json.load(open(sys.argv[1]))
+payload = ""
+for section in ("outcome_response", "transaction_response", "submission_response"):
+    resp = data.get(section, {}).get("Response", {})
+    p = resp.get("Payload", "")
+    if p:
+        payload = p
+        break
 
-# ALWAYS use canonical response only
-response = (
-    data.get("outcome_response", {})
-        .get("Response", {})
-)
-
-keys = [
-    "BroadcastFee",
-    "ProtocolFee",
-    "DeveloperFee",
-    "ProcessingFee",
-    "NagFee",
-    "GasLimit"
-]
-
-total = sum(
-    float(response.get(k, 0))
-    for k in keys
-)
-
-print(round(total, 6))
+print(len(payload) // 2)
 PY
 }
 
+# Log timing + payload size for one stage.
+#   $1 = stage name
+#   $2 = start epoch
+#   $3 = end epoch
+#   $4 = receipt file (used only to read the on-chain payload size)
 function log_metrics() {
     local stage=$1
     local start=$2
     local end=$3
-    local receipt=$4  # 👈 Always make the receipt the 4th argument
-    
-    shift 4           # 👈 Shift by 4 so "$@" only contains the files for size checking
+    local receipt=$4
 
-    local duration=$((end-start))
-    local size=$(get_size_bytes "$@")
-    local size_kb=$(python -c "print(round($size/1024,2))")
+    local duration=$((end - start))
 
-    # Call the extractor using our explicit receipt variable
-    local cirx=$(extract_cirx_cost "$receipt")
-    
-    # Handle empty or invalid returns gracefully by defaulting to 0
-    if [ -z "$cirx" ]; then cirx=0; fi
-    
-    local eur=$(python -c "print(round($cirx*$CIRX_EUR_RATE,6))")
+    local pbytes
+    pbytes=$(get_payload_bytes "$receipt")
+    if [ -z "$pbytes" ]; then pbytes=0; fi
 
-    echo "$stage,$start,$end,$duration,$size,$size_kb,$cirx,$eur" >> "$METRICS_FILE"
+    local pkb
+    pkb=$(python -c "print(round($pbytes/1024, 3))")
+
+    echo "$stage,$start,$end,$duration,$pbytes,$pkb" >> "$METRICS_FILE"
 }
 
 
@@ -128,11 +108,8 @@ python src/verify_certificate.py \
 
 E1=$(date +%s)
 
-log_metrics "environment_verification" $S2 $E2 \
-  "certificates/receipts/environment_v1_receipt.json" \
-  "certificates/manifests/environment_v1_manifest.json" \
-  "certificates/receipts/environment_v1_receipt.json"
-
+log_metrics "dataset_verification" $S1 $E1 \
+  "certificates/receipts/dataset_receipt.json"
 
 read -p "Press Enter to continue to Environment verification..."
 
@@ -151,8 +128,6 @@ python src/verify_certificate.py \
 E2=$(date +%s)
 
 log_metrics "environment_verification" $S2 $E2 \
-  "certificates/receipts/environment_v1_receipt.json" \
-  "certificates/manifests/environment_v1_manifest.json" \
   "certificates/receipts/environment_v1_receipt.json"
 
 read -p "Press Enter to continue to Cleaning stage..."
@@ -193,13 +168,8 @@ python src/verify_certificate.py \
 
 E3=$(date +%s)
 
-# === STEP 3 ===
 log_metrics "cleaning_stage" $S3 $E3 \
-  "certificates/receipts/cleaning_v3_receipt.json" \
-  "certificates/manifests/cleaning_v3_manifest.json" \
-  "data/processed/iris_cleaned.csv" \
-  "artifacts/logs/cleaning_report.json"
-
+  "certificates/receipts/cleaning_v3_receipt.json"
 
 read -p "Press Enter to continue to Training stage..."
 
@@ -239,15 +209,8 @@ python src/verify_certificate.py \
 
 E4=$(date +%s)
 
-# === STEP 4 ===
 log_metrics "training_stage" $S4 $E4 \
-  "certificates/receipts/training_v3_receipt.json" \
-  "certificates/manifests/training_v3_manifest.json" \
-  "artifacts/models/iris_nn_model.pkl" \
-  "artifacts/logs/training_log.json"
-
-
-
+  "certificates/receipts/training_v3_receipt.json"
 
 read -p "Press Enter to continue to Model stage..."
 
@@ -281,11 +244,8 @@ python src/verify_certificate.py \
 
 E5=$(date +%s)
 
-# === STEP 5 ===
 log_metrics "model_stage" $S5 $E5 \
-  "certificates/receipts/model_v3_receipt.json" \
-  "certificates/manifests/model_v3_manifest.json" \
-  "artifacts/models/iris_nn_model.pkl"
+  "certificates/receipts/model_v3_receipt.json"
 
 # ================================================================
 # DONE
@@ -296,7 +256,11 @@ echo "║              ✅ DEMO COMPLETE - ALL VERIFIED                   ║"
 echo "╚════════════════════════════════════════════════════════════════╝"
 
 echo
-echo "📊 Metrics saved to:"
+echo "📊 Timing + payload metrics saved to:"
 echo "$METRICS_FILE"
+echo
+echo "💰 To estimate certification cost from these receipts, run:"
+echo "   python estimate_costs.py --receipts-dir certificates/receipts --out-dir artifacts/metrics_estimated"
+echo
 
 column -s, -t < "$METRICS_FILE"
