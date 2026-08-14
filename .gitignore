@@ -23,3 +23,9 @@ artifacts/
 artifacts/logs/
 artifacts/models/
 artifacts/metrics/
+
+
+# Foundry
+blockchain-contracts/out/
+blockchain-contracts/cache/
+blockchain-contracts/broadcast/
