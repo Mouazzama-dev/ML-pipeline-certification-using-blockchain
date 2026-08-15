@@ -131,6 +131,14 @@ class PolygonBackend(BlockchainBackend):
         if status != "Executed":
             raise RuntimeError(f"Transaction failed on-chain: {tx_hash.hex()}")
 
+        # Effective gas price actually paid (wei). Combined with gas_used this
+        # gives the exact on-chain cost, so estimate_cost_polygon.py works from
+        # real data instead of an assumed gas price.
+        gas_price_wei = getattr(receipt_chain, "effectiveGasPrice", None)
+        if gas_price_wei is None:
+            gas_price_wei = w3.eth.gas_price
+        cost_wei = receipt_chain.gasUsed * int(gas_price_wei)
+
         receipt = {
             "backend": self.name,
             "manifest_sha256": manifest_sha256,
@@ -141,9 +149,13 @@ class PolygonBackend(BlockchainBackend):
             "block_id": str(receipt_chain.blockNumber),
             "status": status,
             "gas_used": receipt_chain.gasUsed,
+            "gas_price_wei": int(gas_price_wei),
+            "cost_wei": int(cost_wei),
+            "cost_pol": float(w3.from_wei(cost_wei, "ether")),
         }
         self.validate_receipt(receipt)
-        print(f"Transaction status: {status}  |  gas used: {receipt_chain.gasUsed}")
+        print(f"Transaction status: {status}  |  gas used: {receipt_chain.gasUsed}"
+              f"  |  cost: {receipt['cost_pol']:.8f} POL")
         return receipt
 
     def fetch_certificate(self, receipt: dict) -> str:
