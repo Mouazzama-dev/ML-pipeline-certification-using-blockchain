@@ -119,9 +119,9 @@ def verify_certificate(
         print("FAILED: Receipt manifest hash does not match the current manifest.")
         return False
 
-    # 2. Read what is anchored on-chain (delegated to the backend) and compare.
-    on_chain_manifest_text = backend.fetch_certificate(receipt)
-    if on_chain_manifest_text != local_manifest_text:
+    # 2. Confirm the on-chain record matches the local manifest. Each backend
+    #    decides how (Circular: full-text match; Polygon: hash certified on-chain).
+    if not backend.verify_on_chain(receipt, local_manifest_text):
         print("FAILED: Local manifest does not match blockchain certificate.")
         return False
     print("VERIFIED: Local manifest matches blockchain certificate.")

@@ -65,6 +65,18 @@ class BlockchainBackend(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
+    def verify_on_chain(self, receipt: dict, local_manifest_text: str) -> bool:
+        """
+        Confirm the on-chain record matches the local manifest.
+
+        Each backend decides HOW: Circular compares the full manifest text it
+        stored on-chain; Polygon confirms the manifest hash is certified in the
+        contract. Both return True only if the on-chain proof matches the local
+        manifest the caller holds.
+        """
+        raise NotImplementedError
+
     def validate_receipt(self, receipt: dict) -> None:
         """
         Helper: make sure a receipt has the keys the rest of the project needs.

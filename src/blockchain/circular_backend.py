@@ -142,3 +142,8 @@ class CircularBackend(BlockchainBackend):
                 return certified_data
         finally:
             account.close()
+
+    def verify_on_chain(self, receipt: dict, local_manifest_text: str) -> bool:
+        """Circular stored the full manifest text; compare it exactly."""
+        on_chain_text = self.fetch_certificate(receipt)
+        return on_chain_text == local_manifest_text
