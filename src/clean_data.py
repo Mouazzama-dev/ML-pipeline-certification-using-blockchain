@@ -23,6 +23,10 @@ def clean_dataset(
     output_path: str,
     report_path: str,
     overwrite: bool = False,
+    dataset_manifest: str = "certificates/manifests/dataset_manifest.json",
+    dataset_receipt: str = "certificates/receipts/dataset_receipt.json",
+    environment_manifest: str = "certificates/manifests/environment_v1_manifest.json",
+    environment_receipt: str = "certificates/receipts/environment_v1_receipt.json",
 ) -> None:
     output_file = Path(output_path)
     report_file = Path(report_path)
@@ -42,8 +46,8 @@ def clean_dataset(
     print("--- Verifying Required Parent Certificates ---")
 
     dataset_verified = verify_certificate(
-        manifest_path="certificates/manifests/dataset_manifest.json",
-        receipt_path="certificates/receipts/dataset_receipt.json",
+        manifest_path=dataset_manifest,
+        receipt_path=dataset_receipt,
         evidence_root=".",
     )
 
@@ -51,8 +55,8 @@ def clean_dataset(
         raise RuntimeError("Dataset Certificate verification failed. Cleaning stopped.")
 
     environment_verified = verify_certificate(
-        manifest_path="certificates/manifests/environment_v1_manifest.json",
-        receipt_path="certificates/receipts/environment_v1_receipt.json",
+        manifest_path=environment_manifest,
+        receipt_path=environment_receipt,
         evidence_root=".",
     )
 
@@ -152,6 +156,30 @@ def main() -> None:
     )
 
     parser.add_argument(
+        "--dataset-manifest",
+        default="certificates/manifests/dataset_manifest.json",
+        help="Parent dataset certificate manifest to verify before cleaning",
+    )
+
+    parser.add_argument(
+        "--dataset-receipt",
+        default="certificates/receipts/dataset_receipt.json",
+        help="Parent dataset certificate receipt to verify before cleaning",
+    )
+
+    parser.add_argument(
+        "--environment-manifest",
+        default="certificates/manifests/environment_v1_manifest.json",
+        help="Parent environment certificate manifest to verify before cleaning",
+    )
+
+    parser.add_argument(
+        "--environment-receipt",
+        default="certificates/receipts/environment_v1_receipt.json",
+        help="Parent environment certificate receipt to verify before cleaning",
+    )
+
+    parser.add_argument(
         "--overwrite",
         action="store_true",
         help="Overwrite outputs only before blockchain certification",
@@ -165,6 +193,10 @@ def main() -> None:
             output_path=args.output,
             report_path=args.report,
             overwrite=args.overwrite,
+            dataset_manifest=args.dataset_manifest,
+            dataset_receipt=args.dataset_receipt,
+            environment_manifest=args.environment_manifest,
+            environment_receipt=args.environment_receipt,
         )
     except Exception as error:
         print(f"Cleaning failed: {error}", file=sys.stderr)
@@ -173,5 +205,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-
