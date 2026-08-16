@@ -29,3 +29,4 @@ artifacts/metrics/
 blockchain-contracts/out/
 blockchain-contracts/cache/
 blockchain-contracts/broadcast/
+artifacts/logs/training_log.json
