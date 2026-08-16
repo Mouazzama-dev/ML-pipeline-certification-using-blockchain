@@ -45,12 +45,8 @@ def actor_address():
 
 @app.get("/health")
 def health():
-    return {
-        "status": "ok",
-        "service": STAGE,
-        "role": "REVIEWER",
-        "actor": actor_address(),
-    }
+    return {"status": "ok", "service": STAGE, "role": "REVIEWER",
+            "actor": actor_address()}
 
 
 @app.post("/run")
@@ -64,7 +60,7 @@ def run(req: RunRequest):
             "stage": STAGE,
             "error": "stage rejected or failed",
             "exit_code": result.returncode,
-            "stdout_tail": result.stdout[-1500:],
+            "log": result.stdout,
             "stderr_tail": result.stderr[-1500:],
         })
 
@@ -77,5 +73,6 @@ def run(req: RunRequest):
         "tx_id": receipt.get("tx_id"),
         "block_id": receipt.get("block_id"),
         "manifest_sha256": receipt.get("manifest_sha256"),
+        "log": result.stdout,
         "receipt": receipt,
     }

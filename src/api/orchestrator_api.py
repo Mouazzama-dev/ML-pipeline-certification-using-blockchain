@@ -2,15 +2,12 @@
 """
 Orchestrator microservice -- HTTP wrapper + distributed driver.
 
-- Computes pipeline status from on-chain state (reuses orchestrator.py logic).
-- Drives the workflow by calling the actor microservices over HTTP:
-      root stages (dataset, environment)  -> admin, via certify_root_on_v2.py
-      cleaning                            -> POST cleaning-service /run   (Person A)
-      training                            -> POST training-service /run   (Person B)
-      model                               -> POST review-service   /run   (Person C)
+- GET  /status/{id}        -> pipeline status from on-chain state
+- POST /run-all/{id}        -> drive the whole workflow across the actor services
 
-This service holds the ADMIN key (for root stages) and the URLs of the actor
-services. Each actor's own key lives only inside that actor's service.
+The run-all response carries BOTH a conclusion (per stage: status/actor/tx) AND
+the full step-by-step "log" of each stage, so you can show either the summary or
+the detailed Step 3->7 execution.
 
 Run locally (from repo root):
     uvicorn api.orchestrator_api:app --app-dir src --port 8000
@@ -30,7 +27,6 @@ import requests
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 
-# reuse the CLI orchestrator's on-chain status logic
 from orchestrator import stage_defs, compute_status
 from blockchain.multiactor_backend import MultiActorBackend
 
@@ -76,9 +72,15 @@ def _certify_roots(pipeline_id: int) -> dict:
         raise HTTPException(status_code=500, detail={
             "stage": "root(dataset+environment)",
             "error": "root certification failed",
+            "log": result.stdout,
             "stderr_tail": result.stderr[-1500:],
         })
-    return {"stage": "root(dataset+environment)", "status": "certified", "by": "admin"}
+    return {
+        "stage": "root(dataset+environment)",
+        "status": "certified",
+        "by": "admin",
+        "log": result.stdout,
+    }
 
 
 def _call_service(stage: str, pipeline_id: int) -> dict:
@@ -90,7 +92,6 @@ def _call_service(stage: str, pipeline_id: int) -> dict:
         raise HTTPException(status_code=502, detail={
             "stage": stage, "error": f"could not reach {url}: {exc}"})
     if resp.status_code != 200:
-        # propagate the actor service's reject/recovery reason
         raise HTTPException(status_code=resp.status_code, detail={
             "stage": stage, "error": "actor service rejected", "detail": resp.json()})
     body = resp.json()
@@ -99,12 +100,16 @@ def _call_service(stage: str, pipeline_id: int) -> dict:
         "status": body.get("status"),
         "actor_address": body.get("actor_address"),
         "tx_id": body.get("tx_id"),
+        "log": body.get("log"),        # full step-by-step detail from the actor
     }
 
 
 @app.post("/run-all/{pipeline_id}")
 def run_all(pipeline_id: int):
-    """Drive the whole workflow: admin roots, then the three actor services."""
+    """Drive the whole workflow: admin roots, then the three actor services.
+
+    Each step carries a conclusion (status/actor/tx) AND its full 'log'.
+    """
     results = [_certify_roots(pipeline_id)]
     for stage in ("cleaning", "training", "model"):
         results.append(_call_service(stage, pipeline_id))
