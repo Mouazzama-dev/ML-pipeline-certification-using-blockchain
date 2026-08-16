@@ -98,3 +98,117 @@ function storeCertificate(uint256 pipelineId, bytes32 manifestHash,
     require(roleManager.canCertify(pipelineId, stage, msg.sender),
             "caller not authorized for stage");           // <-- delegates to RoleManager
     for (i in parents) require(certificates[key(pipelineId,parents[i])].exists,
+            "parent certificate not found");              // <-- parent chain enforced
+    // ...store, push to allKeys, emit CertificateStored
+}
+```
+Read side: `isCertified(id, hash)`, `getCertificate(id, hash)` →
+`(stage, parents, submitter, timestamp)`.
+
+The two-contract split means role policy can evolve independently of the
+certificate ledger, and the same registry deploys unchanged on any EVM chain.
+
+---
+
+## 4. Role resolution & the fail-open gap
+
+`canCertify` treats "no role set" as "open":
+
+```mermaid
+flowchart TB
+    Q["canCertify(pipeline, stage, account)"] --> R{"stageRole[pipeline][stage] == 0 ?"}
+    R -->|yes| T["return TRUE  (no gate)"]
+    R -->|no| H{"account holds required role?"}
+    H -->|yes| T2["return TRUE"]
+    H -->|no| F["return FALSE"]
+```
+
+This is **correct for root stages** (dataset/environment are meant to be
+role-free). But it also means:
+
+> On a pipeline where `setup_pipeline_roles` was **never run**, `stageRole` for
+> *cleaning/training/model* is also `0`, so `canCertify` returns `true` for
+> **anyone**. The role gate only bites on **properly initialized** pipelines.
+
+Demonstrated against a never-created pipeline `99999`:
+
+```
+pipelineAdmin(99999)              = 0x000...000   (never created)
+stageRole(99999,'cleaning')       = 0x000...000
+canCertify(99999,'cleaning', A)   = True          # fail-open
+```
+
+**Mitigation (fail-closed guard, no redeploy):** before running a non-root stage,
+require both `pipelineAdmin(id) != 0` and `getStageRole(id, stage) != 0`; otherwise
+reject with `pipeline not initialized`. This can live in the stage services and/or
+the orchestrator.
+
+---
+
+## 5. Design decision: reusing the compute scripts (“Option A”)
+
+`clean_data.py` and `train_model.py` predate the multi-actor design and each run
+their **own** parent verification through the single-actor `polygon_backend`.
+Rather than fork them, the multi-actor stage services **keep them untouched** and
+pass the `polygon_*` parent paths so their internal check passes against the V1
+contract. Meanwhile the *real* multi-actor parent check happens on V2 (Step 4 of
+each service).
+
+Why this matters:
+- The single-actor demo (`run_polygon_demo.sh`) keeps working unchanged.
+- Parent verification for a stage is effectively performed **multiple times**
+  (service Step 4 on V2 → `submit()` pre-flight → the contract `require`), so the
+  redundant V1 check adds no security, only compatibility.
+- The parent paths in `clean_data.py`/`train_model.py` were made **CLI-configurable**
+  (with defaults preserving the original behavior) to enable this.
+
+---
+
+## 6. Reject / recovery path
+
+Every guard is fail-stop: a failed role/parent check, or an out-of-gas actor,
+halts that stage and leaves it **open** for retry — nothing downstream proceeds.
+
+```mermaid
+flowchart TB
+    S["run stage"] --> R{"role OK?"}
+    R -->|no| X["REJECTED (unauthorized)"]
+    R -->|yes| P{"parents on-chain?"}
+    P -->|no| X2["REJECTED (missing parent)"]
+    P -->|yes| E{"execute + sign + certify"}
+    E -->|tx fails / no gas| X3["FAILED — stage stays OPEN"]
+    E -->|ok| D["CERTIFIED → next stage unlocks"]
+    X & X2 & X3 --> REC["Recovery: fix cause, re-run same stage"]
+```
+
+The orchestrator surfaces the failing stage and its reason; because status is
+derived from on-chain state, a fixed-and-retried stage simply becomes `CERTIFIED`
+and the run can continue.
+
+---
+
+## 7. Gas & cost methodology
+
+- Only the 32-byte hash is written, so there is **no variable payload** — cost is
+  `gas_used × gas_price`, converted POL → EUR by `estimate_cost_polygon.py`.
+- Gas scales with **parent count** (each parent = one `bytes32` stored + one
+  `require(exists)`), visible in the per-stage table in the README.
+- The Circular baseline used a fee-function over on-chain payload size; the
+  Polygon figure is measured from real receipts. Result: **≈ €0.32 → ≈ €0.014**
+  for a full pipeline (~23×).
+
+---
+
+## 8. Known limitations
+
+| Limitation | Impact | Suggested fix |
+|---|---|---|
+| Fail-open on un-initialized pipelines | actor stages open if roles never set | fail-closed guard (§4) |
+| Shared `ma_*` receipt filenames | a new pipeline overwrites the previous run's local receipts (on-chain data is safe) | namespace receipts by pipeline id |
+| Byte-identical model hashing | strict reproducibility check can differ across lib/hardware | compare metrics/weights within tolerance |
+| Containers run as root (sudo) | receipts written to host are root-owned | run as host UID, or `chown` after |
+| Redundant V1 parent check in compute scripts | extra read-only calls | optional `--skip-parent-verification` flag |
+
+---
+
+*Companion to the main [README](../README.md).*
