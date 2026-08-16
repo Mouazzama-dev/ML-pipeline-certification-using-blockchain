@@ -78,11 +78,16 @@ def load_role_manager_abi() -> list:
     )
 
 
-def send(w3, account, fn):
-    """Build, sign, send a transaction and wait for it."""
+def send(w3, account, fn, nonce):
+    """Build, sign, send a transaction with an EXPLICIT nonce and wait for it.
+
+    The nonce is tracked locally by the caller (not re-queried each time),
+    because public RPCs don't always report the updated transaction count fast
+    enough between back-to-back sends -> 'nonce too low'.
+    """
     tx = fn.build_transaction({
         "from": account.address,
-        "nonce": w3.eth.get_transaction_count(account.address),
+        "nonce": nonce,
         "chainId": w3.eth.chain_id,
     })
     signed = account.sign_transaction(tx)
@@ -120,9 +125,13 @@ def main():
     print(f"Admin: {account.address}")
     print(f"RoleManager: {rm_addr}\n")
 
+    # Track the nonce locally, starting from the pending count, and +1 per tx.
+    nonce = w3.eth.get_transaction_count(account.address, "pending")
+
     # 1. Create pipeline
     print("Creating pipeline...")
-    _, receipt = send(w3, account, rm.functions.createPipeline())
+    _, receipt = send(w3, account, rm.functions.createPipeline(), nonce)
+    nonce += 1
     # pipelineId comes from the PipelineCreated event
     logs = rm.events.PipelineCreated().process_receipt(receipt)
     pipeline_id = logs[0]["args"]["pipelineId"]
@@ -131,14 +140,16 @@ def main():
     # 2. Map stages to roles
     for stage, role in STAGE_ROLES.items():
         print(f"Setting stage role: {stage} -> {role.hex()[:10]}...")
-        send(w3, account, rm.functions.setStageRole(pipeline_id, stage, role))
+        send(w3, account, rm.functions.setStageRole(pipeline_id, stage, role), nonce)
+        nonce += 1
 
     # 3. Grant roles to actors
     print()
     for role, addr in GRANTS:
         addr_cs = Web3.to_checksum_address(addr)
         print(f"Granting {role.hex()[:10]}... to {addr_cs}")
-        send(w3, account, rm.functions.grantRole(pipeline_id, role, addr_cs))
+        send(w3, account, rm.functions.grantRole(pipeline_id, role, addr_cs), nonce)
+        nonce += 1
 
     print("\n" + "=" * 60)
     print(f"Pipeline {pipeline_id} is set up.")
