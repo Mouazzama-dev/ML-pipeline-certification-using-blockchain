@@ -197,17 +197,6 @@ and the run can continue.
   Polygon figure is measured from real receipts. Result: **≈ €0.32 → ≈ €0.014**
   for a full pipeline (~23×).
 
----
-
-## 8. Known limitations
-
-| Limitation | Impact | Suggested fix |
-|---|---|---|
-| Fail-open on un-initialized pipelines | actor stages open if roles never set | fail-closed guard (§4) |
-| Shared `ma_*` receipt filenames | a new pipeline overwrites the previous run's local receipts (on-chain data is safe) | namespace receipts by pipeline id |
-| Byte-identical model hashing | strict reproducibility check can differ across lib/hardware | compare metrics/weights within tolerance |
-| Containers run as root (sudo) | receipts written to host are root-owned | run as host UID, or `chown` after |
-| Redundant V1 parent check in compute scripts | extra read-only calls | optional `--skip-parent-verification` flag |
 
 ---
 
