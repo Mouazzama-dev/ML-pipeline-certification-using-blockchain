@@ -3,3 +3,6 @@ scikit-learn
 joblib
 python-dotenv
 circular-enterprise-apis
+web3
+fastapi
+uvicorn[standard]

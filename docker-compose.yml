@@ -1,0 +1,83 @@
+# Multi-actor certification pipeline -- four microservices, one shared image.
+#
+# Each service holds ONLY its own actor's private key (key isolation enforced at
+# the container boundary). A shared volume lets the stages pass files between
+# containers (cleaned dataset, model, manifests, receipts).
+#
+#   sudo docker compose up --build -d      # build image + start all four
+#   curl -X POST localhost:8000/run-all/<pipeline_id>
+#   sudo docker compose down               # stop everything
+#
+# Keys/addresses are read from the repo .env (never baked into the image).
+
+x-common-env: &common-env
+  BLOCKCHAIN: polygon
+  POLYGON_RPC_URL: ${POLYGON_RPC_URL}
+  POLYGON_NETWORK: ${POLYGON_NETWORK:-amoy}
+  ROLE_MANAGER_ADDRESS: ${ROLE_MANAGER_ADDRESS}
+  POLYGON_CONTRACT_ADDRESS_V2: ${POLYGON_CONTRACT_ADDRESS_V2}
+  POLYGON_CONTRACT_ADDRESS: ${POLYGON_CONTRACT_ADDRESS}
+
+x-shared-volumes: &shared-volumes
+  - ./data:/app/data
+  - ./artifacts:/app/artifacts
+  - ./certificates:/app/certificates
+
+services:
+  cleaning:
+    image: ml-cert-pipeline
+    build: .
+    command: python -m uvicorn api.cleaning_api:app --app-dir src --host 0.0.0.0 --port 8001
+    ports:
+      - "8001:8001"
+    environment:
+      <<: *common-env
+      PERSON_A_PRIVATE_KEY: ${PERSON_A_PRIVATE_KEY}
+      # clean_data.py's read-only parent-verify uses the polygon backend, which
+      # needs a key -> give it the actor's OWN key, so no admin key lives here.
+      POLYGON_PRIVATE_KEY: ${PERSON_A_PRIVATE_KEY}
+    volumes: *shared-volumes
+
+  training:
+    image: ml-cert-pipeline
+    build: .
+    command: python -m uvicorn api.training_api:app --app-dir src --host 0.0.0.0 --port 8002
+    ports:
+      - "8002:8002"
+    environment:
+      <<: *common-env
+      PERSON_B_PRIVATE_KEY: ${PERSON_B_PRIVATE_KEY}
+      POLYGON_PRIVATE_KEY: ${PERSON_B_PRIVATE_KEY}
+    volumes: *shared-volumes
+
+  review:
+    image: ml-cert-pipeline
+    build: .
+    command: python -m uvicorn api.review_api:app --app-dir src --host 0.0.0.0 --port 8003
+    ports:
+      - "8003:8003"
+    environment:
+      <<: *common-env
+      # review has no compute step -> only needs its own signing key.
+      PERSON_C_PRIVATE_KEY: ${PERSON_C_PRIVATE_KEY}
+    volumes: *shared-volumes
+
+  orchestrator:
+    image: ml-cert-pipeline
+    build: .
+    command: python -m uvicorn api.orchestrator_api:app --app-dir src --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    environment:
+      <<: *common-env
+      # admin key, only for the root stages (dataset, environment).
+      POLYGON_PRIVATE_KEY: ${POLYGON_PRIVATE_KEY}
+      # reach the actor services by their compose service names.
+      CLEANING_URL: http://cleaning:8001
+      TRAINING_URL: http://training:8002
+      REVIEW_URL: http://review:8003
+    depends_on:
+      - cleaning
+      - training
+      - review
+    volumes: *shared-volumes

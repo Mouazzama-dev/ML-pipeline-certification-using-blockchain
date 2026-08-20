@@ -42,6 +42,10 @@ def train_neural_network(
     model_output_path: str,
     log_output_path: str,
     overwrite: bool = False,
+    cleaning_manifest: str = "certificates/manifests/cleaning_v1_manifest.json",
+    cleaning_receipt: str = "certificates/receipts/cleaning_v1_receipt.json",
+    environment_manifest: str = "certificates/manifests/environment_v1_manifest.json",
+    environment_receipt: str = "certificates/receipts/environment_v1_receipt.json",
 ) -> None:
     model_file = Path(model_output_path)
     log_file = Path(log_output_path)
@@ -61,8 +65,8 @@ def train_neural_network(
     print("--- Verifying Required Parent Certificates ---")
 
     cleaning_verified = verify_certificate(
-        manifest_path="certificates/manifests/cleaning_v1_manifest.json",
-        receipt_path="certificates/receipts/cleaning_v1_receipt.json",
+        manifest_path=cleaning_manifest,
+        receipt_path=cleaning_receipt,
         evidence_root=".",
     )
 
@@ -70,8 +74,8 @@ def train_neural_network(
         raise RuntimeError("Cleaning Certificate verification failed. Training stopped.")
 
     environment_verified = verify_certificate(
-        manifest_path="certificates/manifests/environment_v1_manifest.json",
-        receipt_path="certificates/receipts/environment_v1_receipt.json",
+        manifest_path=environment_manifest,
+        receipt_path=environment_receipt,
         evidence_root=".",
     )
 
@@ -249,6 +253,30 @@ def main() -> None:
     )
 
     parser.add_argument(
+        "--cleaning-manifest",
+        default="certificates/manifests/cleaning_v1_manifest.json",
+        help="Parent cleaning certificate manifest to verify before training",
+    )
+
+    parser.add_argument(
+        "--cleaning-receipt",
+        default="certificates/receipts/cleaning_v1_receipt.json",
+        help="Parent cleaning certificate receipt to verify before training",
+    )
+
+    parser.add_argument(
+        "--environment-manifest",
+        default="certificates/manifests/environment_v1_manifest.json",
+        help="Parent environment certificate manifest to verify before training",
+    )
+
+    parser.add_argument(
+        "--environment-receipt",
+        default="certificates/receipts/environment_v1_receipt.json",
+        help="Parent environment certificate receipt to verify before training",
+    )
+
+    parser.add_argument(
         "--overwrite",
         action="store_true",
         help="Overwrite outputs only before blockchain certification",
@@ -262,6 +290,10 @@ def main() -> None:
             model_output_path=args.model_output,
             log_output_path=args.log_output,
             overwrite=args.overwrite,
+            cleaning_manifest=args.cleaning_manifest,
+            cleaning_receipt=args.cleaning_receipt,
+            environment_manifest=args.environment_manifest,
+            environment_receipt=args.environment_receipt,
         )
     except Exception as error:
         print(f"Training failed: {error}", file=sys.stderr)
