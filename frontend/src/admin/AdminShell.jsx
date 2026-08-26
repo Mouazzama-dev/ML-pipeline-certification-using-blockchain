@@ -5,6 +5,7 @@ import CreatePipeline from "./CreatePipeline";
 import CertifyRoots from "./CertifyRoots";
 import RoleManagement from "./RoleManagement";
 import PipelineView from "./PipelineView";
+import ChainAudit from "./ChainAudit";
 
 const NAV = [
   { key: "dashboard", label: "Dashboard" },
@@ -12,6 +13,7 @@ const NAV = [
   { key: "certify",   label: "Certify Dataset/Env" },
   { key: "roles",     label: "Role Management" },
   { key: "pipeline",  label: "Pipeline View" },
+  { key: "audit",     label: "Chain Audit" },
 ];
 
 export default function AdminShell({ address, chainOk, onLogout, getReadContracts, getWriteContracts }) {
@@ -52,6 +54,7 @@ export default function AdminShell({ address, chainOk, onLogout, getReadContract
           {tab === "certify"   && <CertifyRoots ctx={ctx} />}
           {tab === "roles"     && <RoleManagement ctx={ctx} />}
           {tab === "pipeline"  && <PipelineView ctx={ctx} />}
+          {tab === "audit"     && <ChainAudit ctx={ctx} />}
         </div>
       </main>
     </div>
