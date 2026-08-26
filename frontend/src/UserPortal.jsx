@@ -77,6 +77,7 @@ export default function UserPortal({ address, getReadContracts, getWriteContract
           const isCert = s.status === "CERTIFIED";
           const isReady = s.status === "READY";
           const highlight = mine && !isCert;
+          const stageMap = Object.fromEntries(stages.map((x) => [x.name, x]));
           return (
             <div key={s.name}
               className={`rounded-xl px-4 py-3 border ${highlight ? "border-blue-500 border-2 bg-blue-50/40" : "border-gray-200"} ${!mine && !isCert ? "opacity-60" : ""}`}>
@@ -89,6 +90,40 @@ export default function UserPortal({ address, getReadContracts, getWriteContract
                 </div>
                 <span className={`text-xs ${statusStyle[s.status]}`}>{isCert ? "✓ certified" : s.status.toLowerCase()}</span>
               </div>
+
+              {/* certified: show hash + submitter + timestamp */}
+              {isCert && (
+                <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-gray-400 font-mono">
+                  <span className="truncate" title={s.hash}>hash: {s.hash ? s.hash.slice(0, 18) + "…" : "—"}</span>
+                  <span>by: {s.submitter ? short(s.submitter) : "—"}</span>
+                  <span className="col-span-2">{s.ts ? new Date(s.ts * 1000).toLocaleString() : ""}</span>
+                </div>
+              )}
+
+              {/* actor's own stage when ready: show upstream inputs panel */}
+              {highlight && isReady && s.parents.length > 0 && (
+                <div className="mt-3 rounded-lg bg-white border border-blue-200 px-3 py-2">
+                  <div className="text-xs font-medium text-blue-700 mb-1.5">Your upstream inputs</div>
+                  <div className="space-y-1.5">
+                    {s.parents.map((p) => {
+                      const ps = stageMap[p];
+                      return (
+                        <div key={p} className="text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="text-green-600 font-medium">✓ {ps?.label || p}</span>
+                            <span className="text-gray-400">certified by {ps?.submitter ? short(ps.submitter) : "—"}</span>
+                            <span className="text-gray-400">{ps?.ts ? new Date(ps.ts * 1000).toLocaleDateString() : ""}</span>
+                          </div>
+                          <div className="font-mono text-gray-400 truncate mt-0.5" title={ps?.hash}>
+                            {ps?.hash ? ps.hash.slice(0, 30) + "…" : "—"}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-2 text-xs text-gray-400">These hashes will be embedded in your certificate as parent links.</p>
+                </div>
+              )}
 
               {highlight && isReady && (
                 <UploadCertify pid={pid} stage={s} address={address} getWriteContracts={getWriteContracts} onDone={refresh} />

@@ -24,9 +24,17 @@ export function usePipeline(getReadContracts, address, pipelineId = PIPELINE_ID)
       const hashes = res.stage_hashes || {};
 
       const certified = {};
+      const certData  = {};
       for (const s of STAGES) {
         const h = hashes[s.name];
-        certified[s.name] = h ? await registry.isCertified(pipelineId, h) : false;
+        const ok = h ? await registry.isCertified(pipelineId, h) : false;
+        certified[s.name] = ok;
+        if (ok) {
+          try {
+            const c = await registry.getCertificate(pipelineId, h);
+            certData[s.name] = { submitter: c.submitter, ts: Number(c.timestamp) };
+          } catch { /* ignore */ }
+        }
       }
 
       const out = STAGES.map((s) => {
@@ -34,7 +42,8 @@ export function usePipeline(getReadContracts, address, pipelineId = PIPELINE_ID)
         if (certified[s.name]) status = "CERTIFIED";
         else if (s.parents.every((p) => certified[p])) status = "READY";
         else status = "LOCKED";
-        return { ...s, status };
+        const cd = certData[s.name] || {};
+        return { ...s, status, hash: hashes[s.name] || null, submitter: cd.submitter || null, ts: cd.ts || null };
       });
       setStages(out);
     } catch (e) {
