@@ -121,7 +121,9 @@ contract RoleManager {
     {
         bytes32 required = stageRole[pipelineId][stage];
         if (required == bytes32(0)) {
-            return true; // no role gate on this stage
+            // no role set: only the pipeline admin may certify (root stages);
+            // gated stages without a role stay locked (fail-closed)
+            return account == pipelineAdmin[pipelineId];
         }
         return roles[pipelineId][required][account];
     }
