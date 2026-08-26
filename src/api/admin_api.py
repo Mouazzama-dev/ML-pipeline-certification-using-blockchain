@@ -67,6 +67,11 @@ class ActorIn(BaseModel):
 
 class ManifestReq(BaseModel):
     pipeline_id: int
+    dataset_path: str | None = None       # repo-relative; required for /manifest/dataset
+    dependency_lock_path: str | None = None  # repo-relative; required for /manifest/environment
+
+
+ADMIN_UPLOAD_ROOT = REPO_ROOT / "data" / "admin_uploads"
 
 
 class StageHashIn(BaseModel):
@@ -148,12 +153,31 @@ def _hash_of(path: str) -> str:
     return hash_file(str(REPO_ROOT / path))
 
 
+@app.post("/upload/admin/{pipeline_id}")
+async def upload_admin_dataset(pipeline_id: int, files: list[UploadFile] = File(...)):
+    """Admin uploads a dataset (or any root-stage files) for a given pipeline."""
+    dest = ADMIN_UPLOAD_ROOT / f"pipeline_{pipeline_id}"
+    dest.mkdir(parents=True, exist_ok=True)
+    saved = []
+    for f in files:
+        target = dest / f.filename
+        content = await f.read()
+        target.write_bytes(content)
+        saved.append(str(target.relative_to(REPO_ROOT)))
+    return {"pipeline_id": pipeline_id, "saved": saved}
+
+
 @app.post("/manifest/dataset")
 def build_dataset_manifest(req: ManifestReq):
-    out = "certificates/manifests/admin_dataset_manifest.json"
+    if not req.dataset_path:
+        raise HTTPException(status_code=400, detail="dataset_path is required")
+    full = REPO_ROOT / req.dataset_path
+    if not full.exists():
+        raise HTTPException(status_code=400, detail=f"dataset file not found: {req.dataset_path}")
+    out = f"certificates/manifests/pipeline_{req.pipeline_id}_dataset_manifest.json"
     _run([sys.executable, "src/manifest_service.py",
           "--type", "dataset", "--output", out, "--overwrite",
-          "--file", "dataset=data/raw/IRIS.csv",
+          "--file", f"dataset={req.dataset_path}",
           "--meta", f"pipeline_id={req.pipeline_id}"])
     return {"stage": "dataset", "manifest_path": out,
             "manifest_sha256": "0x" + _hash_of(out)}
@@ -161,16 +185,21 @@ def build_dataset_manifest(req: ManifestReq):
 
 @app.post("/manifest/environment")
 def build_environment_manifest(req: ManifestReq):
-    # 1) snapshot the environment, 2) build its manifest
+    if not req.dependency_lock_path:
+        raise HTTPException(status_code=400, detail="dependency_lock_path is required")
+    lock_full = REPO_ROOT / req.dependency_lock_path
+    if not lock_full.exists():
+        raise HTTPException(status_code=400, detail=f"dependency lock file not found: {req.dependency_lock_path}")
+    snap_out = f"artifacts/environment/pipeline_{req.pipeline_id}_environment.json"
     _run([sys.executable, "src/environment_snapshot.py",
           "--label", f"pipeline-{req.pipeline_id}-env",
-          "--dependency-lock", "requirements.lock.txt",
-          "--output", "artifacts/environment/admin_environment.json", "--overwrite"])
-    out = "certificates/manifests/admin_environment_manifest.json"
+          "--dependency-lock", req.dependency_lock_path,
+          "--output", snap_out, "--overwrite"])
+    out = f"certificates/manifests/pipeline_{req.pipeline_id}_environment_manifest.json"
     _run([sys.executable, "src/manifest_service.py",
           "--type", "environment", "--output", out, "--overwrite",
-          "--file", "environment_snapshot=artifacts/environment/admin_environment.json",
-          "--file", "dependency_lock=requirements.lock.txt",
+          "--file", f"environment_snapshot={snap_out}",
+          "--file", f"dependency_lock={req.dependency_lock_path}",
           "--meta", f"pipeline_id={req.pipeline_id}"])
     return {"stage": "environment", "manifest_path": out,
             "manifest_sha256": "0x" + _hash_of(out)}

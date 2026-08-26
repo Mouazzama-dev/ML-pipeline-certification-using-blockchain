@@ -1,0 +1,16 @@
+certifi==2026.5.20
+charset-normalizer==3.4.7
+circular_enterprise_apis==1.0.1
+ecdsa==0.19.2
+idna==3.16
+joblib==1.5.3
+numpy==2.4.6
+pandas==3.0.3
+python-dateutil==2.9.0.post0
+python-dotenv==1.2.2
+requests==2.34.2
+scikit-learn==1.8.0
+scipy==1.17.1
+six==1.17.0
+threadpoolctl==3.6.0
+urllib3==2.7.0

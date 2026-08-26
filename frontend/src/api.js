@@ -20,8 +20,20 @@ export const api = {
   savePipeline: (p) => req("/pipelines", { method: "POST", body: JSON.stringify(p) }),
   listActors: (id) => req(`/actors/${id}`),
   saveActor: (id, a) => req(`/actors/${id}`, { method: "POST", body: JSON.stringify(a) }),
-  buildDatasetManifest: (pipeline_id) => req("/manifest/dataset", { method: "POST", body: JSON.stringify({ pipeline_id }) }),
-  buildEnvManifest: (pipeline_id) => req("/manifest/environment", { method: "POST", body: JSON.stringify({ pipeline_id }) }),
+  uploadAdminDataset: async (pipeline_id, fileList) => {
+    const fd = new FormData();
+    for (const f of fileList) fd.append("files", f);
+    const res = await fetch(`${BASE}/upload/admin/${pipeline_id}`, { method: "POST", body: fd });
+    if (!res.ok) {
+      let d; try { d = (await res.json()).detail; } catch { d = res.statusText; }
+      throw new Error(typeof d === "string" ? d : JSON.stringify(d));
+    }
+    return res.json();
+  },
+  buildDatasetManifest: (pipeline_id, dataset_path) =>
+    req("/manifest/dataset", { method: "POST", body: JSON.stringify({ pipeline_id, dataset_path }) }),
+  buildEnvManifest: (pipeline_id, dependency_lock_path) =>
+    req("/manifest/environment", { method: "POST", body: JSON.stringify({ pipeline_id, dependency_lock_path }) }),
   stageHashes: (id) => req(`/stage-hashes/${id}`),
   saveStageHash: (payload) => req("/stage-hash", { method: "POST", body: JSON.stringify(payload) }),
 

@@ -20,9 +20,9 @@ export default function CertifyRoots({ ctx }) {
 
       <div className="space-y-4">
         <RootCard ctx={ctx} pid={pid} stage="dataset"
-          title="Dataset" desc="Certifies the raw dataset (IRIS.csv). The backend builds the manifest and its SHA-256; you sign the on-chain certificate." />
+          title="Dataset" desc="Upload your dataset file. The backend hashes it into a manifest; you sign the on-chain certificate." />
         <RootCard ctx={ctx} pid={pid} stage="environment"
-          title="Environment" desc="Certifies the Python environment (version + locked dependencies). Snapshot is built by the backend; you sign on-chain." />
+          title="Environment" desc="Upload your dependency lock file (e.g. requirements.txt). The backend auto-snapshots the Python environment and builds the manifest; you sign on-chain." />
       </div>
 
       <p className="mt-6 text-xs text-gray-400">
@@ -38,6 +38,8 @@ function RootCard({ ctx, pid, stage, title, desc }) {
   const [hash, setHash] = useState(null);
   const [alreadyCertified, setAlreadyCertified] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [datasetFiles, setDatasetFiles] = useState([]);
+  const [uploadedPath, setUploadedPath] = useState(null);
 
   // On load, check if this stage is already certified on-chain.
   useEffect(() => {
@@ -66,10 +68,22 @@ function RootCard({ ctx, pid, stage, title, desc }) {
     setMsg(null);
     try {
       setBusy(true);
+      let savedPath = uploadedPath;
+      if (!savedPath) {
+        if (!datasetFiles.length) {
+          setMsg({ type: "err", text: `Choose a ${stage === "dataset" ? "dataset" : "dependency lock"} file first.` });
+          setBusy(false);
+          return;
+        }
+        setMsg({ type: "info", text: "Uploading file…" });
+        const up = await api.uploadAdminDataset(pid, datasetFiles);
+        savedPath = up.saved[0];
+        setUploadedPath(savedPath);
+      }
       setMsg({ type: "info", text: "Building manifest…" });
       const build = stage === "dataset"
-        ? await api.buildDatasetManifest(pid)
-        : await api.buildEnvManifest(pid);
+        ? await api.buildDatasetManifest(pid, savedPath)
+        : await api.buildEnvManifest(pid, savedPath);
       const manifestHash = build.manifest_sha256;
       setHash(manifestHash);
 
@@ -104,9 +118,23 @@ function RootCard({ ctx, pid, stage, title, desc }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5">
       <div className="flex items-start justify-between">
-        <div className="pr-4">
+        <div className="pr-4 flex-1">
           <div className="text-sm font-medium text-gray-900">{title}</div>
           <div className="text-sm text-gray-500 mt-1">{desc}</div>
+          {!alreadyCertified && (
+            <div className="mt-3">
+              <input
+                type="file"
+                onChange={(e) => { setDatasetFiles(Array.from(e.target.files)); setUploadedPath(null); }}
+                className="block text-sm text-gray-500
+                  file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0
+                  file:text-sm file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200"
+              />
+              {datasetFiles.length > 0 && (
+                <p className="text-xs text-gray-400 mt-1">{datasetFiles[0].name}</p>
+              )}
+            </div>
+          )}
           {hash && <div className="text-xs text-gray-400 mt-2 break-all">hash: {hash}</div>}
         </div>
         {checking ? (
