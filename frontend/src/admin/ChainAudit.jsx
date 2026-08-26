@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
-import { STAGES, PIPELINE_ID } from "../config";
+import { STAGES, PIPELINE_ID, CONTRACTS } from "../config";
 import { api } from "../api";
 import PipelinePicker from "./PipelinePicker";
 
@@ -135,12 +135,15 @@ export default function ChainAudit({ ctx }) {
   const pid = ctx.selectedPipeline;
   const [stages, setStages] = useState([]);
   const [stageHashes, setStageHashes] = useState({});
+  const [pipelineName, setPipelineName] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       setLoading(true);
       try {
+        const pInfo = await api.getPipeline(pid).catch(() => null);
+        setPipelineName(pInfo?.name || `Pipeline #${pid}`);
         const contracts = await ctx.getReadContracts();
         const hashes = await api.stageHashes(pid).catch(() => ({ stage_hashes: {} }));
         const sh = hashes.stage_hashes || {};
@@ -151,7 +154,7 @@ export default function ChainAudit({ ctx }) {
 
         for (const s of STAGES) {
           const h = sh[s.name];
-          let certifiedFlag = false, onChainParents = null, submitter = null;
+          let certifiedFlag = false, onChainParents = null, submitter = null, ts = null;
           if (h && contracts) {
             try {
               const ok = await contracts.registry.isCertified(pid, h);
@@ -161,6 +164,7 @@ export default function ChainAudit({ ctx }) {
                 try {
                   const c = await contracts.registry.getCertificate(pid, h);
                   submitter = c.submitter;
+                  ts = Number(c.timestamp);
                   onChainParents = Array.from(c.parents).map((p) => p.toLowerCase());
                 } catch { /* ignore */ }
               }
@@ -190,7 +194,7 @@ export default function ChainAudit({ ctx }) {
             roleOk = true; // root stages — no role required
           }
 
-          out.push({ ...s, hash: h, certified: certifiedFlag, onChainParents, chainOk, roleOk, submitter, upstreamBroken: false });
+          out.push({ ...s, hash: h, certified: certifiedFlag, onChainParents, chainOk, roleOk, submitter, ts, upstreamBroken: false });
         }
 
         // propagate broken status downstream (topological order = STAGES order)
@@ -211,6 +215,152 @@ export default function ChainAudit({ ctx }) {
 
   const stageMap = Object.fromEntries(stages.map((s) => [s.name, s]));
   const certifiedCount = stages.filter((s) => s.certified).length;
+  // ── export helpers ──────────────────────────────────────────────────────────
+  function buildReportData() {
+    const verdict = allIssues();
+    return {
+      report: {
+        generated_at: new Date().toISOString(),
+        pipeline_id: pid,
+        pipeline_name: pipelineName,
+        network: "Polygon Amoy",
+        registry_contract: CONTRACTS.registry,
+        chain_verdict: verdict,
+        stages_certified: stages.filter((s) => s.certified).length,
+        stages_total: stages.length,
+      },
+      stages: stages.map((s) => ({
+        name: s.name,
+        label: s.label,
+        required_role: s.requiredRole || null,
+        manifest_hash: s.hash || null,
+        certified: s.certified,
+        submitter: s.submitter || null,
+        timestamp: s.ts ? new Date(s.ts * 1000).toISOString() : null,
+        parents: s.parents,
+        on_chain_parents: s.onChainParents || [],
+        chain_integrity: !s.certified ? "not_certified"
+          : s.chainOk === false ? "broken"
+          : s.upstreamBroken ? "upstream_compromised"
+          : "ok",
+        role_check: !s.certified ? "not_applicable"
+          : !s.requiredRole ? "not_required"
+          : s.roleOk === true ? "ok"
+          : s.roleOk === false ? "violated"
+          : "unknown",
+      })),
+      issues: [
+        ...stages.filter((s) => s.chainOk === false).map((s) => ({
+          stage: s.name, type: "chain_broken",
+          detail: `Parent hash mismatch. On-chain parents: [${(s.onChainParents || []).join(", ")}]`,
+        })),
+        ...stages.filter((s) => s.upstreamBroken).map((s) => ({
+          stage: s.name, type: "upstream_compromised",
+          detail: `Depends on a compromised parent stage: ${s.parents.join(", ")}`,
+        })),
+        ...stages.filter((s) => s.roleOk === false).map((s) => ({
+          stage: s.name, type: "role_violation",
+          detail: `Stage signed by ${s.submitter} who does not hold role ${s.requiredRole}`,
+        })),
+      ],
+    };
+  }
+
+  function downloadJSON() {
+    const data = buildReportData();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `provenance_report_pipeline_${pid}.json`; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function printReport() {
+    const data = buildReportData();
+    const stageRows = data.stages.map((s) => `
+      <tr>
+        <td>${s.label}</td>
+        <td class="mono">${s.manifest_hash ? s.manifest_hash.slice(0, 20) + "…" : "—"}</td>
+        <td class="mono">${s.submitter ? s.submitter.slice(0, 10) + "…" : "—"}</td>
+        <td>${s.timestamp ? new Date(s.timestamp).toLocaleString() : "—"}</td>
+        <td>${s.required_role || "none"}</td>
+        <td class="status ${s.chain_integrity}">${s.chain_integrity.replace("_", " ")}</td>
+        <td class="status ${s.role_check}">${s.role_check.replace("_", " ")}</td>
+      </tr>`).join("");
+
+    const issueRows = data.issues.length
+      ? data.issues.map((i) => `<tr><td>${i.stage}</td><td>${i.type.replace("_", " ")}</td><td>${i.detail}</td></tr>`).join("")
+      : `<tr><td colspan="3" style="text-align:center;color:#16a34a">No issues found</td></tr>`;
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+    <title>Provenance Report — ${data.report.pipeline_name}</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 40px; color: #111; font-size: 13px; }
+      h1 { font-size: 22px; margin-bottom: 4px; }
+      .meta { color: #555; margin-bottom: 24px; font-size: 12px; }
+      .verdict { display:inline-block; padding: 4px 14px; border-radius: 20px; font-weight: 600; font-size: 13px; margin-bottom: 28px; }
+      .VALID { background:#dcfce7; color:#15803d; }
+      .BROKEN { background:#fee2e2; color:#dc2626; }
+      .ROLE_VIOLATION { background:#fef9c3; color:#854d0e; }
+      h2 { font-size: 15px; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin-top: 32px; }
+      table { width:100%; border-collapse: collapse; margin-top: 10px; }
+      th { background:#f9fafb; text-align:left; padding: 7px 10px; font-size:11px; color:#6b7280; border-bottom:1px solid #e5e7eb; }
+      td { padding: 7px 10px; border-bottom: 1px solid #f3f4f6; vertical-align:top; }
+      .mono { font-family: monospace; font-size: 11px; }
+      .status { font-weight: 600; text-transform: capitalize; }
+      .ok, .not_required { color: #16a34a; }
+      .broken, .violated, .upstream_compromised { color: #dc2626; }
+      .not_certified, .not_applicable, .unknown { color: #9ca3af; }
+      .footer { margin-top: 40px; font-size: 11px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 12px; }
+      @media print { body { margin: 20px; } }
+    </style></head><body>
+    <h1>Provenance Report</h1>
+    <div class="meta">
+      Pipeline #${data.report.pipeline_id} &nbsp;·&nbsp; ${data.report.pipeline_name}
+      &nbsp;·&nbsp; Network: ${data.report.network}
+      &nbsp;·&nbsp; Generated: ${new Date(data.report.generated_at).toLocaleString()}
+    </div>
+    <div>
+      <span class="verdict ${data.report.chain_verdict}">
+        ${data.report.chain_verdict === "VALID" ? "✓ Chain Verified" : "✗ " + data.report.chain_verdict.replace("_", " ")}
+      </span>
+    </div>
+    <div class="meta">Stages certified: ${data.report.stages_certified} / ${data.report.stages_total}
+      &nbsp;·&nbsp; Registry: <span style="font-family:monospace">${data.report.registry_contract}</span>
+    </div>
+    <h2>Stage Details</h2>
+    <table>
+      <thead><tr>
+        <th>Stage</th><th>Manifest Hash</th><th>Submitter</th>
+        <th>Timestamp</th><th>Required Role</th><th>Chain</th><th>Role</th>
+      </tr></thead>
+      <tbody>${stageRows}</tbody>
+    </table>
+    <h2>Issues</h2>
+    <table>
+      <thead><tr><th>Stage</th><th>Type</th><th>Detail</th></tr></thead>
+      <tbody>${issueRows}</tbody>
+    </table>
+    <div class="footer">
+      Blockchain-Certified ML Pipeline · Polygon Amoy Testnet ·
+      Registry contract: ${data.report.registry_contract}
+    </div>
+    <script>window.onload = () => window.print();</script>
+    </body></html>`;
+
+    const w = window.open("", "_blank");
+    w.document.write(html);
+    w.document.close();
+  }
+
+  function allIssues() {
+    if (stages.some((s) => s.chainOk === false || s.upstreamBroken)) return "BROKEN";
+    if (stages.some((s) => s.roleOk === false)) return "ROLE_VIOLATION";
+    if (stages.every((s) => s.certified)) return "VALID";
+    return "INCOMPLETE";
+  }
+  // ────────────────────────────────────────────────────────────────────────────
+
   const chainBroken      = stages.filter((s) => s.chainOk === false);
   const upstreamBroken   = stages.filter((s) => s.upstreamBroken);
   const roleViolations   = stages.filter((s) => s.roleOk === false);
@@ -237,7 +387,19 @@ export default function ChainAudit({ ctx }) {
           <h1 className="text-2xl font-medium text-gray-900 mb-1">Chain Audit</h1>
           <p className="text-sm text-gray-500">Pipeline #{pid} · provenance graph + role verification</p>
         </div>
-        <PipelinePicker ctx={ctx} />
+        <div className="flex items-center gap-2">
+          {!loading && stages.some((s) => s.certified) && (<>
+            <button onClick={downloadJSON}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition">
+              Download JSON
+            </button>
+            <button onClick={printReport}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition">
+              Export PDF
+            </button>
+          </>)}
+          <PipelinePicker ctx={ctx} />
+        </div>
       </div>
 
       {/* overall banner */}
