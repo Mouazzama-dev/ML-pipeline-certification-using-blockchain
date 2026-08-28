@@ -1,0 +1,43 @@
+======================================================================
+BLOCKCHAIN COMPARISON SUMMARY
+Polygon Amoy  vs  Circular Testnet
+Polygon runs: 30
+POL/EUR rate: 0.4
+======================================================================
+
+EXECUTION TIME (seconds)
+  Stage           Poly mean  Poly std        Circ
+  ----------------------------------------------
+  Dataset               5.0       0.5         8.0
+  Environment           5.4       0.7        13.0
+  Cleaning              7.4       0.7        36.0
+  Training              9.0       0.8        41.0
+  Model                 4.8       0.6        28.0
+  TOTAL                31.6                  126.0
+
+CERTIFICATION COST (EUR)
+  Stage             Poly mean    Poly std          Circ
+  ----------------------------------------------------
+  Dataset        €   0.004445 €  0.003090  €   0.037247
+  Environment    €   0.004383 €  0.003107  €   0.056471
+  Cleaning       €   0.006148 €  0.004243  €   0.085307
+  Training       €   0.005935 €  0.003970  €   0.085307
+  Model          €   0.005357 €  0.003711  €   0.056471
+  TOTAL          €   0.026268               €   0.320803
+
+GAS USED (Polygon Amoy)
+  Stage            Gas mean   Gas std
+  -----------------------------------
+  Dataset           187,278         2
+  Environment       187,324         5
+  Cleaning          266,082         7
+  Training          266,080         7
+  Model             236,605         6
+  TOTAL           1,143,369
+
+NOTES
+  Circular cost is deterministic: same payload size → same fee.
+  Std dev for Circular cost = 0 (analytical formula, not a live run).
+  Circular execution time is from a single historical run (testnet
+  unavailable for repetition at time of writing).
+======================================================================

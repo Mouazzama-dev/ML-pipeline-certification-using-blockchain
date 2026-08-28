@@ -1,0 +1,6 @@
+stage,n_runs,poly_time_mean_s,poly_time_std_s,poly_gas_mean,poly_gas_std,poly_cost_eur_mean,poly_cost_eur_std,circ_payload_bytes,circ_cost_cirx,circ_cost_eur,circ_time_s
+Dataset,30,4.97,0.52,187278.0,2.0,0.004445,0.00309,794,15.5,0.037247,8.0
+Environment,30,5.38,0.66,187324,5.0,0.004383,0.003107,1476,23.5,0.056471,13.0
+Cleaning,30,7.43,0.7,266082.0,7.0,0.006148,0.004243,2952,35.5,0.085307,36.0
+Training,30,9.04,0.76,266080.0,7.0,0.005935,0.00397,2666,35.5,0.085307,41.0
+Model,30,4.79,0.59,236605.0,6.0,0.005357,0.003711,1666,23.5,0.056471,28.0
