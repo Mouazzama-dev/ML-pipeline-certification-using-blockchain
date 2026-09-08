@@ -30,6 +30,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 STORE_PATH = REPO_ROOT / "certificates" / "pipelines.json"
 
 app = FastAPI(title="Admin Support API (off-chain)")
+from api.run_api import router as run_router
+app.include_router(run_router)
 
 # Allow the Vite dev server (and others) to call this API from the browser.
 app.add_middleware(
